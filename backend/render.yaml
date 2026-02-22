@@ -1,0 +1,24 @@
+
+services:
+  - type: web
+    name: ai-sentinel-backend
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-sentinel-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHONUNBUFFERED
+        value: 1
+
+databases:
+  - name: ai-sentinel-db
+    plan: free
+    databaseName: ai_sentinel
+    user: ai_sentinel_user
