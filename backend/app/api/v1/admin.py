@@ -15,12 +15,34 @@ from app.models.incident import Incident
 from app.services.anomaly_detector import AnomalyDetector
 from app.services.incident_manager import IncidentManager
 from app.services.storage import IncidentStorage
+from app.services.notifications.notification_service import NotificationService
+from app.services.notifications.email_notifier import EmailNotifier
+from app.services.notifications.slack_notifier import SlackNotifier
 from app.core import runtime_config
+from app.core.config import get_settings
 
 router = APIRouter()
 detector = AnomalyDetector()
 incident_manager = IncidentManager()
 storage = IncidentStorage()
+
+# Build notification service (same logic as ingest.py)
+def _build_notifier() -> NotificationService:
+    s = get_settings()
+    slack_notifier = SlackNotifier(s.slack_webhook_url) if s.slack_webhook_url else None
+    email_notifier = None
+    if s.smtp_host and s.smtp_username and s.smtp_password and s.smtp_sender:
+        email_notifier = EmailNotifier(
+            smtp_host=s.smtp_host,
+            smtp_port=s.smtp_port,
+            username=s.smtp_username,
+            password=s.smtp_password,
+            sender=s.smtp_sender,
+            receiver=s.smtp_receiver,
+        )
+    return NotificationService(slack_notifier=slack_notifier, email_notifier=email_notifier)
+
+notifier = _build_notifier()
 
 # In-memory generator state
 generator_state = {
@@ -182,6 +204,7 @@ def generate_random_incident(anomaly_rate: int = 30):
     anomaly_result = detector.predict(datapoint["values"])
     incident = incident_manager.create_incident(datapoint, anomaly_result)
     saved = storage.save(incident)
+    notifier.notify_if_needed(incident)   # trigger email/slack if threshold met
     return saved
 
 
