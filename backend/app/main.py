@@ -13,14 +13,14 @@ app = FastAPI(
     version=settings.app_version
 )
 
-# Build allowed origins: start from config defaults, then add any
-# comma-separated origins from ALLOWED_ORIGINS env var (easy to set on Railway)
-_extra = os.getenv("ALLOWED_ORIGINS", "")
-_origins = list(settings.cors_origins)
-for _o in _extra.split(","):
-    _o = _o.strip()
-    if _o:
-        _origins.append(_o)
+# CORS: read a plain comma-separated list from ALLOWED_ORIGINS env var.
+# Falls back to localhost dev origins. Does NOT use pydantic settings to
+# avoid JSON-array parsing issues with Railway environment variables.
+_raw = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+)
+_origins = [o.strip() for o in _raw.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
