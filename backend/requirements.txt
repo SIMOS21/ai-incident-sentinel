@@ -28,6 +28,7 @@ reportlab==4.0.9
 
 # HTTP Client (for notifications)
 httpx==0.26.0
+requests==2.31.0
 
 # CORS
 python-dotenv==1.0.0
