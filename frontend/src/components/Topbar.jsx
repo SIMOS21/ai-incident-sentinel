@@ -10,27 +10,32 @@ export default function Topbar() {
       case "/":
         return {
           title: "AI Sentinel Dashboard",
-          description: "Vue d'ensemble des incidents",
+          description: "Real-time incident overview",
         };
       case "/incidents":
         return {
-          title: "Gestion des Incidents",
-          description: "Liste et détails des incidents détectés",
+          title: "Incident Management",
+          description: "Browse and inspect detected incidents",
         };
       case "/analytics":
         return {
-          title: "Analytiques",
-          description: "Statistiques et rapports détaillés",
+          title: "Analytics",
+          description: "Statistics and detailed reports",
+        };
+      case "/admin":
+        return {
+          title: "Admin Panel",
+          description: "System control and data ingestion",
         };
       case "/settings":
         return {
-          title: "Paramètres",
-          description: "Configuration de l'application",
+          title: "Settings",
+          description: "Application configuration",
         };
       default:
         return {
           title: "AI Sentinel",
-          description: "Surveillance des incidents IA",
+          description: "AI incident monitoring",
         };
     }
   };
@@ -59,7 +64,7 @@ export default function Topbar() {
           <div className="flex items-center space-x-2 px-3 py-2 bg-slate-800/50 dark:bg-slate-800/50 light:bg-gray-100 rounded-lg border border-slate-700/50 dark:border-slate-700/50 light:border-gray-200">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-xs text-slate-400 dark:text-slate-400 light:text-gray-700 font-medium">
-              Système en ligne
+              System online
             </span>
           </div>
         </div>

@@ -1,27 +1,43 @@
-export default function LiveIndicator({ isLive, lastUpdate, onToggle, newCount = 0 }) {
+﻿import { useState, useEffect } from "react";
+import { useLive } from "../context/LiveContext";
+
+export default function LiveIndicator({ lastUpdate, newCount = 0 }) {
+  const { isLive, toggleLive } = useLive();
+  const [, setTick] = useState(0);
+
+  // Force rerender every second to keep the timestamp fresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const formatTime = (date) => {
     if (!date) return "";
     const now = new Date();
-    const diff = Math.floor((now - date) / 1000); // secondes
+    const diff = Math.max(0, Math.floor((now - new Date(date)) / 1000));
 
-    if (diff < 60) return `il y a ${diff}s`;
-    if (diff < 3600) return `il y a ${Math.floor(diff / 60)}min`;
-    return date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+
+    return new Date(date).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
     <div className="flex items-center space-x-4">
-      {/* Indicateur LIVE */}
       <div className="flex items-center space-x-2">
         <button
-          onClick={onToggle}
+          onClick={toggleLive}
           className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
             isLive
               ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg shadow-red-500/50"
-              : "bg-slate-800/50 dark:bg-slate-800/50 light:bg-gray-200 text-slate-400 dark:text-slate-400 light:text-gray-700"
+              : "bg-slate-800/50 text-slate-400"
           }`}
         >
-          {/* Point clignotant */}
           {isLive && (
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -29,39 +45,25 @@ export default function LiveIndicator({ isLive, lastUpdate, onToggle, newCount =
             </span>
           )}
           <span className="text-sm uppercase tracking-wider">
-            {isLive ? "🔴 LIVE" : "⏸ Pause"}
+            {isLive ? "LIVE" : "PAUSE"}
           </span>
         </button>
 
-        {/* Badge nouveaux incidents */}
         {newCount > 0 && (
           <div className="animate-bounce">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg">
-              +{newCount} nouveau{newCount > 1 ? "x" : ""}
+              +{newCount} new
             </span>
           </div>
         )}
       </div>
 
-      {/* Dernière mise à jour */}
       {lastUpdate && (
-        <div className="text-sm text-slate-400 dark:text-slate-400 light:text-gray-600 flex items-center space-x-2">
-          <svg
-            className={`w-4 h-4 ${isLive ? "animate-spin" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
+        <div className="text-sm text-slate-400 flex items-center space-x-2">
           <span>{formatTime(lastUpdate)}</span>
         </div>
       )}
     </div>
   );
 }
+

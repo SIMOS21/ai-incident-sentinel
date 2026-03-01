@@ -35,7 +35,7 @@ export default function IncidentChart({ incidents, type }) {
       <div className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 rounded-2xl border border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500">
         <div className="mb-6">
           <h3 className="text-xl font-bold text-slate-200 mb-1">
-            📈 Évolution temporelle
+            TREND Évolution temporelle
           </h3>
           <p className="text-sm text-slate-500">
             Incidents des 7 derniers jours
@@ -76,7 +76,7 @@ export default function IncidentChart({ incidents, type }) {
       <div className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 rounded-2xl border border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500">
         <div className="mb-6">
           <h3 className="text-xl font-bold text-slate-200 mb-1">
-            🎯 Répartition par sévérité
+             Répartition par sévérité
           </h3>
           <p className="text-sm text-slate-500">Distribution des incidents</p>
         </div>

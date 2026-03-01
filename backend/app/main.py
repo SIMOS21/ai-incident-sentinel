@@ -1,22 +1,20 @@
 from app.db.base import Base
 from app.db.session import engine
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware  # AJOUTEZ CETTE LIGNE
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
+from app.core.config import get_settings
+
+settings = get_settings()
 
 app = FastAPI(
-    title="AI Incident Sentinel",
-    version="1.0.0"
+    title=settings.app_name,
+    version=settings.app_version
 )
 
-# AJOUTEZ CETTE CONFIGURATION CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

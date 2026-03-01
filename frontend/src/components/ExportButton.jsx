@@ -1,95 +1,122 @@
 import { useState } from "react";
+import { buildApiUrl } from "../services/api";
+
+const EXPORT_ACTIONS = [
+  {
+    id: "csv",
+    label: "Export CSV",
+    desc: "For Excel, Google Sheets",
+    iconPath: "M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+  },
+  {
+    id: "json",
+    label: "Export JSON",
+    desc: "Structured data format",
+    iconPath: "M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+  },
+  {
+    id: "copy",
+    label: "Copy to clipboard",
+    desc: "Plain text format",
+    iconPath: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+    color: "text-cyan-400",
+    bg: "bg-cyan-500/10",
+  },
+];
+
+const PDF_PERIODS = [
+  { key: "day",   label: "Today",       desc: "Incidents from today"      },
+  { key: "week",  label: "This week",   desc: "Last 7 days"               },
+  { key: "month", label: "This month",  desc: "Last 30 days"              },
+  { key: "all",   label: "All time",    desc: "Complete history"          },
+];
 
 export default function ExportButton({ incidents }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [showPDFOptions, setShowPDFOptions] = useState(false);
-  const [pdfPeriod, setPdfPeriod] = useState("day");
+  const [isOpen, setIsOpen]           = useState(false);
+  const [showPDF, setShowPDF]         = useState(false);
+  const [showCustom, setShowCustom]   = useState(false);
+  const [loadingPDF, setLoadingPDF]   = useState(false);
+  const [copied, setCopied]           = useState(false);
   const [customDates, setCustomDates] = useState({ start: "", end: "" });
-  const [loadingPDF, setLoadingPDF] = useState(false);
 
+  const close = () => { setIsOpen(false); setShowPDF(false); setShowCustom(false); };
+
+  /* ===== Data exports ===== */
   const exportCSV = () => {
-    const headers = ["ID", "Date/Heure", "Source", "Type", "Sévérité", "Message", "Score", "Anomalie"];
+    const headers = ["ID", "Date/Time", "Source", "Type", "Severity", "Message", "Score", "Anomaly"];
     const rows = incidents.map((inc) => [
       inc.id,
-      new Date(inc.timestamp).toLocaleString("fr-FR"),
+      new Date(inc.timestamp).toLocaleString("en-US"),
       inc.source,
       inc.type,
       inc.severity,
       inc.message,
       inc.score?.toFixed(4) || "",
-      inc.is_anomaly ? "Oui" : "Non",
+      inc.is_anomaly ? "Yes" : "No",
     ]);
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `incidents_${new Date().toISOString().split("T")[0]}.csv`);
-    link.click();
-    setIsOpen(false);
+    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `incidents_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    close();
   };
 
   const exportJSON = () => {
-    const jsonContent = JSON.stringify(incidents, null, 2);
-    const blob = new Blob([jsonContent], { type: "application/json" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `incidents_${new Date().toISOString().split("T")[0]}.json`);
-    link.click();
-    setIsOpen(false);
+    const blob = new Blob([JSON.stringify(incidents, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `incidents_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    close();
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     const text = incidents
-      .map(
-        (inc) =>
-          `${new Date(inc.timestamp).toLocaleString("fr-FR")} | ${inc.severity.toUpperCase()} | ${inc.source} | ${inc.message}`
+      .map((inc) =>
+        `${new Date(inc.timestamp).toLocaleString("en-US")} | ${inc.severity.toUpperCase()} | ${inc.source} | ${inc.message}`
       )
       .join("\n");
-
-    navigator.clipboard.writeText(text);
-    alert("✅ Copié dans le presse-papiers !");
-    setIsOpen(false);
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => { setCopied(false); close(); }, 1200);
   };
 
+  const handleAction = (id) => {
+    if (id === "csv")  exportCSV();
+    if (id === "json") exportJSON();
+    if (id === "copy") copyToClipboard();
+  };
+
+  /* ===== PDF export ===== */
   const exportPDF = async (period) => {
     setLoadingPDF(true);
-
     try {
-      let url = `http://localhost:8000/v1/reports/generate?period=${period}`;
-
+      let url;
       if (period === "custom" && customDates.start && customDates.end) {
-        url = `http://localhost:8000/v1/reports/generate?start_date=${customDates.start}&end_date=${customDates.end}`;
+        url = `${buildApiUrl("/reports/generate")}?start_date=${customDates.start}&end_date=${customDates.end}`;
+      } else {
+        url = `${buildApiUrl("/reports/generate")}?period=${period}`;
       }
 
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la génération du rapport");
-      }
+      const response = await fetch(url, { headers: { Accept: "application/pdf" } });
+      if (!response.ok) throw new Error("Report generation failed");
 
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `rapport_incidents_${new Date().toISOString().split("T")[0]}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-
-      setIsOpen(false);
-      setShowPDFOptions(false);
-      alert("✅ Rapport PDF généré avec succès !");
-    } catch (error) {
-      console.error("Erreur:", error);
-      alert("❌ Erreur lors de la génération du rapport PDF");
+      const a = document.createElement("a");
+      a.href = window.URL.createObjectURL(blob);
+      a.download = `report_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      close();
+    } catch {
+      alert("Error generating PDF report.");
     } finally {
       setLoadingPDF(false);
     }
@@ -97,274 +124,171 @@ export default function ExportButton({ incidents }) {
 
   return (
     <div className="relative">
+
+      {/* ===== Trigger button ===== */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg"
+        className="flex items-center space-x-2 px-4 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/60 hover:border-slate-600 text-slate-300 hover:text-white rounded-xl font-semibold transition-all text-sm"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-          />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        <span>Exporter</span>
+        <span>Export</span>
         <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+          className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
+      {/* ===== Dropdown ===== */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-slate-900 dark:bg-slate-900 light:bg-white rounded-xl shadow-2xl border border-slate-700 dark:border-slate-700 light:border-gray-200 z-50 overflow-hidden">
-          <div className="p-3">
-            <div className="text-xs font-semibold text-slate-400 dark:text-slate-400 light:text-gray-600 uppercase tracking-wider px-2 py-2">
-              {incidents.length} incidents à exporter
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-40" onClick={close} />
+
+          <div className="absolute right-0 mt-2 w-72 bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-700/60 z-50 overflow-hidden">
+
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-slate-800/60 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Export data</p>
+                <p className="text-xs text-slate-600 mt-0.5">{incidents.length} incidents</p>
+              </div>
+              <button onClick={close} className="text-slate-600 hover:text-slate-400 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            {/* Export CSV */}
-            <button
-              onClick={exportCSV}
-              className="w-full text-left px-4 py-3 hover:bg-slate-800/50 dark:hover:bg-slate-800/50 light:hover:bg-gray-100 rounded-lg transition-colors group flex items-start space-x-3"
-            >
-              <div className="text-3xl">📊</div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-gray-900">
-                  Export CSV
-                </div>
-                <div className="text-xs text-slate-400 dark:text-slate-400 light:text-gray-600">
-                  Pour Excel, Google Sheets
-                </div>
-              </div>
-              <svg
-                className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 transition-colors"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
+            <div className="p-2">
+              {/* Data export actions */}
+              {EXPORT_ACTIONS.map(({ id, label, desc, iconPath, color, bg }) => (
+                <button
+                  key={id}
+                  onClick={() => handleAction(id)}
+                  className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/50 transition-colors group text-left"
+                >
+                  <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center flex-shrink-0`}>
+                    <svg className={`w-4 h-4 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPath} />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                      {id === "copy" && copied ? "Copied!" : label}
+                    </p>
+                    <p className="text-xs text-slate-500">{desc}</p>
+                  </div>
+                  <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ))}
 
-            {/* Export JSON */}
-            <button
-              onClick={exportJSON}
-              className="w-full text-left px-4 py-3 hover:bg-slate-800/50 dark:hover:bg-slate-800/50 light:hover:bg-gray-100 rounded-lg transition-colors group flex items-start space-x-3"
-            >
-              <div className="text-3xl">📄</div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-gray-900">
-                  Export JSON
-                </div>
-                <div className="text-xs text-slate-400 dark:text-slate-400 light:text-gray-600">
-                  Format structuré
-                </div>
-              </div>
-              <svg
-                className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 transition-colors"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
+              {/* Divider */}
+              <div className="my-2 border-t border-slate-800/60" />
 
-            {/* Copier texte */}
-            <button
-              onClick={copyToClipboard}
-              className="w-full text-left px-4 py-3 hover:bg-slate-800/50 dark:hover:bg-slate-800/50 light:hover:bg-gray-100 rounded-lg transition-colors group flex items-start space-x-3"
-            >
-              <div className="text-3xl">📋</div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-gray-900">
-                  Copier le texte
-                </div>
-                <div className="text-xs text-slate-400 dark:text-slate-400 light:text-gray-600">
-                  Dans le presse-papiers
-                </div>
-              </div>
-              <svg
-                className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 transition-colors"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-
-            {/* Séparateur */}
-            <div className="border-t border-slate-700 dark:border-slate-700 light:border-gray-200 my-2" />
-
-            {/* Export PDF avec sous-menu */}
-            <div>
+              {/* PDF section */}
               <button
-                onClick={() => setShowPDFOptions(!showPDFOptions)}
-                className="w-full text-left px-4 py-3 hover:bg-slate-800/50 dark:hover:bg-slate-800/50 light:hover:bg-gray-100 rounded-lg transition-colors group flex items-start space-x-3"
+                onClick={() => { setShowPDF(!showPDF); setShowCustom(false); }}
+                className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/50 transition-colors group text-left"
               >
-                <div className="text-3xl">📑</div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-purple-400 dark:text-purple-400 light:text-purple-600">
-                    Rapport PDF Détaillé
-                  </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-400 light:text-gray-600">
-                    Analyse complète avec graphiques
-                  </div>
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-purple-300 group-hover:text-purple-200 transition-colors">
+                    PDF Report
+                  </p>
+                  <p className="text-xs text-slate-500">Executive summary with charts</p>
                 </div>
                 <svg
-                  className={`w-5 h-5 text-slate-500 group-hover:text-purple-400 transition-all ${
-                    showPDFOptions ? "rotate-90" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                  className={`w-4 h-4 text-slate-600 transition-all ${showPDF ? "rotate-90" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
 
-              {/* Sous-menu PDF */}
-              {showPDFOptions && (
-                <div className="ml-10 mr-2 space-y-2 mt-2 bg-slate-800/30 dark:bg-slate-800/30 light:bg-gray-50 rounded-lg p-2">
+              {/* PDF period picker */}
+              {showPDF && (
+                <div className="ml-11 mr-1 mt-1 mb-1 space-y-0.5">
                   {loadingPDF ? (
-                    <div className="flex items-center justify-center py-4">
-                      <svg
-                        className="animate-spin h-6 w-6 text-purple-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
+                    <div className="flex items-center justify-center py-4 space-x-2">
+                      <svg className="animate-spin h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      <span className="ml-2 text-sm text-purple-400">Génération en cours...</span>
+                      <span className="text-xs text-purple-400">Generating report…</span>
                     </div>
                   ) : (
                     <>
+                      {PDF_PERIODS.map(({ key, label, desc }) => (
+                        <button
+                          key={key}
+                          onClick={() => exportPDF(key)}
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800/60 transition-colors group"
+                        >
+                          <p className="text-xs font-semibold text-slate-300 group-hover:text-white">{label}</p>
+                          <p className="text-xs text-slate-600">{desc}</p>
+                        </button>
+                      ))}
+
+                      {/* Custom range */}
                       <button
-                        onClick={() => exportPDF("day")}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-700/50 dark:hover:bg-slate-700/50 light:hover:bg-gray-200 rounded-md transition-colors text-xs"
+                        onClick={() => setShowCustom(!showCustom)}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800/60 transition-colors group flex items-center justify-between"
                       >
-                        <div className="text-slate-200 dark:text-slate-200 light:text-gray-900 font-medium">
-                          📅 Rapport Aujourd'hui
+                        <div>
+                          <p className="text-xs font-semibold text-slate-300 group-hover:text-white">Custom range</p>
+                          <p className="text-xs text-slate-600">Pick start & end dates</p>
                         </div>
-                        <div className="text-slate-500 dark:text-slate-500 light:text-gray-600">
-                          Incidents du jour
-                        </div>
+                        <svg
+                          className={`w-3.5 h-3.5 text-slate-600 transition-transform ${showCustom ? "rotate-90" : ""}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </button>
 
-                      <button
-                        onClick={() => exportPDF("week")}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-700/50 dark:hover:bg-slate-700/50 light:hover:bg-gray-200 rounded-md transition-colors text-xs"
-                      >
-                        <div className="text-slate-200 dark:text-slate-200 light:text-gray-900 font-medium">
-                          📊 Rapport Hebdomadaire
-                        </div>
-                        <div className="text-slate-500 dark:text-slate-500 light:text-gray-600">
-                          7 derniers jours
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => exportPDF("month")}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-700/50 dark:hover:bg-slate-700/50 light:hover:bg-gray-200 rounded-md transition-colors text-xs"
-                      >
-                        <div className="text-slate-200 dark:text-slate-200 light:text-gray-900 font-medium">
-                          📈 Rapport Mensuel
-                        </div>
-                        <div className="text-slate-500 dark:text-slate-500 light:text-gray-600">
-                          30 derniers jours
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => exportPDF("all")}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-700/50 dark:hover:bg-slate-700/50 light:hover:bg-gray-200 rounded-md transition-colors text-xs"
-                      >
-                        <div className="text-slate-200 dark:text-slate-200 light:text-gray-900 font-medium">
-                          🗂️ Rapport Complet
-                        </div>
-                        <div className="text-slate-500 dark:text-slate-500 light:text-gray-600">
-                          Tout l'historique
-                        </div>
-                      </button>
-
-                      {/* Période personnalisée */}
-                      <div className="border-t border-slate-700/50 dark:border-slate-700/50 light:border-gray-300 pt-2 mt-2">
-                        <div className="text-xs text-slate-400 dark:text-slate-400 light:text-gray-600 px-3 py-1 font-medium">
-                          Période personnalisée
-                        </div>
-                        <div className="px-3 py-2 space-y-2">
+                      {showCustom && (
+                        <div className="px-3 pb-2 pt-1 space-y-2">
                           <input
                             type="date"
                             value={customDates.start}
-                            onChange={(e) =>
-                              setCustomDates({ ...customDates, start: e.target.value })
-                            }
-                            className="w-full px-2 py-1.5 bg-slate-950 dark:bg-slate-950 light:bg-white border border-slate-700 dark:border-slate-700 light:border-gray-300 rounded text-xs text-slate-200 dark:text-slate-200 light:text-gray-900"
-                            placeholder="Date début"
+                            onChange={(e) => setCustomDates({ ...customDates, start: e.target.value })}
+                            className="w-full px-2.5 py-1.5 bg-slate-950/70 border border-slate-700/60 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
                           />
                           <input
                             type="date"
                             value={customDates.end}
-                            onChange={(e) =>
-                              setCustomDates({ ...customDates, end: e.target.value })
-                            }
-                            className="w-full px-2 py-1.5 bg-slate-950 dark:bg-slate-950 light:bg-white border border-slate-700 dark:border-slate-700 light:border-gray-300 rounded text-xs text-slate-200 dark:text-slate-200 light:text-gray-900"
-                            placeholder="Date fin"
+                            onChange={(e) => setCustomDates({ ...customDates, end: e.target.value })}
+                            className="w-full px-2.5 py-1.5 bg-slate-950/70 border border-slate-700/60 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
                           />
                           <button
                             onClick={() => exportPDF("custom")}
-                            disabled={!customDates.start || !customDates.end}
-                            className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-md text-xs font-semibold transition-colors disabled:cursor-not-allowed"
+                            disabled={!customDates.start || !customDates.end || customDates.start > customDates.end}
+                            className="w-full py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-xs font-semibold transition-colors disabled:cursor-not-allowed"
                           >
-                            Générer
+                            Generate
                           </button>
                         </div>
-                      </div>
+                      )}
                     </>
                   )}
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

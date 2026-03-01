@@ -118,7 +118,7 @@ class PDFReportGenerator:
         ).all()
 
         total = len(incidents)
-        high = sum(i.severity == "high" for i in incidents)
+        high = sum(i.severity in ("high", "critical") for i in incidents)
         medium = sum(i.severity == "medium" for i in incidents)
         low = sum(i.severity == "low" for i in incidents)
         anomalies = sum(i.is_anomaly for i in incidents)
@@ -194,7 +194,7 @@ class PDFReportGenerator:
             Incident.timestamp <= end_date
         ).all()
 
-        high = sum(i.severity == "high" for i in incidents)
+        high = sum(i.severity in ("high", "critical") for i in incidents)
         medium = sum(i.severity == "medium" for i in incidents)
         low = sum(i.severity == "low" for i in incidents)
 
@@ -228,7 +228,7 @@ class PDFReportGenerator:
         critical = self.db.query(Incident).filter(
             Incident.timestamp >= start_date,
             Incident.timestamp <= end_date,
-            Incident.severity == "high"
+            Incident.severity.in_(["high", "critical"])
         ).order_by(Incident.score).limit(20).all()
 
         if not critical:
@@ -268,7 +268,7 @@ class PDFReportGenerator:
         stats = self.db.query(
             Incident.source,
             func.count(Incident.id).label("total"),
-            func.sum(func.cast(Incident.severity == "high", Integer)).label("high_count"),
+            func.sum(func.cast(Incident.severity.in_(["high", "critical"]), Integer)).label("high_count"),
             func.avg(Incident.score).label("avg_score")
         ).filter(
             Incident.timestamp >= start_date,
@@ -315,7 +315,7 @@ class PDFReportGenerator:
             Incident.timestamp <= end_date
         ).all()
 
-        high = sum(i.severity == "high" for i in incidents)
+        high = sum(i.severity in ("high", "critical") for i in incidents)
         anomalies = sum(i.is_anomaly for i in incidents)
 
         recs = []

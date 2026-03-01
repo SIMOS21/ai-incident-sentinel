@@ -17,18 +17,22 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="text-center p-8">
-          <div className="text-6xl mb-4">🔒</div>
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 mb-4">
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </div>
           <h2 className="text-2xl font-bold text-slate-200 mb-2">
-            Accès Refusé
+            Access Denied
           </h2>
           <p className="text-slate-400 mb-6">
-            Vous devez être administrateur pour accéder à cette page.
+            You need administrator privileges to access this page.
           </p>
           <button
             onClick={() => window.history.back()}
             className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl"
           >
-            Retour
+            Go Back
           </button>
         </div>
       </div>

@@ -3,7 +3,9 @@
  * frontend/src/services/authService.js
  */
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/v1/auth";
+import { buildApiUrl } from "./api";
+
+const API_URL = buildApiUrl("/auth");
 
 export const authService = {
   /**
@@ -19,7 +21,7 @@ export const authService = {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || "Connexion échouée");
+        throw new Error(error.detail || "Login failed");
       }
 
       const data = await response.json();
