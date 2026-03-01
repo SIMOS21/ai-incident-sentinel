@@ -1,4 +1,3 @@
-import os
 from app.db.base import Base
 from app.db.session import engine
 from fastapi import FastAPI
@@ -13,19 +12,11 @@ app = FastAPI(
     version=settings.app_version
 )
 
-# CORS: read a plain comma-separated list from ALLOWED_ORIGINS env var.
-# Falls back to localhost dev origins. Does NOT use pydantic settings to
-# avoid JSON-array parsing issues with Railway environment variables.
-_raw = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
-)
-_origins = [o.strip() for o in _raw.split(",") if o.strip()]
-
+# Open CORS — JWT is stored in localStorage (not cookies) so wildcard is safe
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
