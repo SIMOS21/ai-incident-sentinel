@@ -6,3 +6,11 @@ email_config: dict = {
     "receiver": "",
     "threshold": "critical",   # "critical" = only critical | "high" = high + critical
 }
+
+smtp_config: dict = {
+    "host": "",
+    "port": 465,
+    "username": "",
+    "password": "",
+    "sender": "",
+}

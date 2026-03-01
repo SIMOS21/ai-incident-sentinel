@@ -16,11 +16,13 @@ export default function Settings() {
     api: { endpoint: "http://localhost:8000", timeout: 30, retries: 3 },
     display: { itemsPerPage: 15, autoRefresh: true, refreshInterval: 30 },
     alerts: { email: "", emailEnabled: false, threshold: "critical" },
+    smtp: { host: "", port: 465, username: "", password: "", sender: "" },
   });
   const [saved, setSaved] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
 
-  // Load email config from backend on mount
+  // Load email + SMTP config from backend on mount
   useEffect(() => {
     fetch(buildApiUrl("/admin/email-config"))
       .then((r) => r.ok ? r.json() : null)
@@ -37,13 +39,31 @@ export default function Settings() {
         }
       })
       .catch(() => {/* backend not reachable — keep defaults */});
+
+    fetch(buildApiUrl("/admin/smtp-config"))
+      .then((r) => r.ok ? r.json() : null)
+      .then((cfg) => {
+        if (cfg) {
+          setSettings((prev) => ({
+            ...prev,
+            smtp: {
+              host: cfg.host || "",
+              port: cfg.port || 465,
+              username: cfg.username || "",
+              password: cfg.password || "",
+              sender: cfg.sender || "",
+            },
+          }));
+        }
+      })
+      .catch(() => {/* backend not reachable — keep defaults */});
   }, []);
 
   const handleSave = async () => {
     // Persist non-email settings to localStorage
     localStorage.setItem("app-settings", JSON.stringify(settings));
 
-    // Persist email config to backend
+    // Persist email config + SMTP config to backend
     setEmailError("");
     try {
       const res = await fetch(buildApiUrl("/admin/email-config"), {
@@ -60,8 +80,26 @@ export default function Settings() {
         setEmailError(err.detail || "Failed to save email config");
         return;
       }
+
+      const smtpRes = await fetch(buildApiUrl("/admin/smtp-config"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          host: settings.smtp.host,
+          port: Number.isFinite(settings.smtp.port) ? settings.smtp.port : 465,
+          username: settings.smtp.username,
+          password: settings.smtp.password,
+          sender: settings.smtp.sender,
+        }),
+      });
+      if (!smtpRes.ok) {
+        const err = await smtpRes.json();
+        setEmailError(err.detail || "Failed to save SMTP config");
+        return;
+      }
     } catch {
-      setEmailError("Could not reach backend — email config not saved");
+      setEmailError("Could not reach backend — settings not saved");
+      return;
     }
 
     setSaved(true);
@@ -75,6 +113,7 @@ export default function Settings() {
         api: { endpoint: "http://localhost:8000", timeout: 30, retries: 3 },
         display: { itemsPerPage: 15, autoRefresh: true, refreshInterval: 30 },
         alerts: { email: "", emailEnabled: false, threshold: "critical" },
+        smtp: { host: "", port: 465, username: "", password: "", sender: "" },
       };
       setSettings(defaults);
       localStorage.removeItem("app-settings");
@@ -241,6 +280,85 @@ export default function Settings() {
               className="w-28 px-4 py-2.5 bg-slate-950/50 border border-slate-700/60 rounded-xl text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             />
           </SettingItem>
+        </SettingsSection>
+
+        {/* SMTP Configuration */}
+        <SettingsSection
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 5.25h16.5m-16.5 0A2.25 2.25 0 001.5 7.5v9A2.25 2.25 0 003.75 18.75h16.5A2.25 2.25 0 0022.5 16.5v-9a2.25 2.25 0 00-2.25-2.25m-16.5 0l8.25 6 8.25-6" />
+            </svg>
+          }
+          title="SMTP Configuration"
+          description="Configure Gmail SMTP credentials"
+        >
+          <SettingItem label="SMTP Host" description="Example: smtp.gmail.com">
+            <input
+              type="text"
+              value={settings.smtp.host}
+              onChange={(e) => set("smtp", "host", e.target.value)}
+              placeholder="smtp.gmail.com"
+              className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700/60 rounded-xl text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all"
+            />
+          </SettingItem>
+          <SettingItem label="SMTP Port" description="Example: 465">
+            <input
+              type="number"
+              value={settings.smtp.port}
+              onChange={(e) => set("smtp", "port", parseInt(e.target.value) || 465)}
+              min="1" max="65535"
+              className="w-28 px-4 py-2.5 bg-slate-950/50 border border-slate-700/60 rounded-xl text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all"
+            />
+          </SettingItem>
+          <SettingItem label="Username" description="Example: your-gmail@gmail.com">
+            <input
+              type="text"
+              value={settings.smtp.username}
+              onChange={(e) => set("smtp", "username", e.target.value)}
+              placeholder="your-gmail@gmail.com"
+              className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700/60 rounded-xl text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all"
+            />
+          </SettingItem>
+          <SettingItem label="Password" description="Use a Gmail App Password">
+            <div className="flex items-center gap-2">
+              <input
+                type={showSmtpPassword ? "text" : "password"}
+                value={settings.smtp.password}
+                onChange={(e) => set("smtp", "password", e.target.value)}
+                placeholder="App password"
+                className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700/60 rounded-xl text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSmtpPassword((v) => !v)}
+                className="px-3 py-2.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 rounded-xl transition-all font-medium text-xs"
+              >
+                {showSmtpPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </SettingItem>
+          <SettingItem label="Sender" description="Example: your-gmail@gmail.com">
+            <input
+              type="email"
+              value={settings.smtp.sender}
+              onChange={(e) => set("smtp", "sender", e.target.value)}
+              placeholder="your-gmail@gmail.com"
+              className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700/60 rounded-xl text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all"
+            />
+          </SettingItem>
+          <div className="pt-5 first:pt-0">
+            <p className="text-xs text-slate-500">
+              Gmail App Password setup:{" "}
+              <a
+                href="https://myaccount.google.com/apppasswords"
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 underline"
+              >
+                myaccount.google.com/apppasswords
+              </a>
+            </p>
+          </div>
         </SettingsSection>
 
         {/* Email Alerts */}

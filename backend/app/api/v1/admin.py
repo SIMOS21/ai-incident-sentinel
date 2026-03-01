@@ -30,19 +30,32 @@ storage = IncidentStorage()
 def _build_notifier() -> NotificationService:
     s = get_settings()
     slack_notifier = SlackNotifier(s.slack_webhook_url) if s.slack_webhook_url else None
+
+    smtp_host = (runtime_config.smtp_config.get("host") or s.smtp_host).strip()
+    smtp_port = runtime_config.smtp_config.get("port") or s.smtp_port
+    smtp_username = (runtime_config.smtp_config.get("username") or s.smtp_username).strip()
+    smtp_password = (runtime_config.smtp_config.get("password") or s.smtp_password).strip()
+    smtp_sender = (runtime_config.smtp_config.get("sender") or s.smtp_sender).strip()
+    smtp_receiver = runtime_config.email_config.get("receiver", "").strip() or s.smtp_receiver
+
     email_notifier = None
-    if s.smtp_host and s.smtp_username and s.smtp_password and s.smtp_sender:
+    if smtp_host and smtp_username and smtp_password and smtp_sender and smtp_receiver:
         email_notifier = EmailNotifier(
-            smtp_host=s.smtp_host,
-            smtp_port=s.smtp_port,
-            username=s.smtp_username,
-            password=s.smtp_password,
-            sender=s.smtp_sender,
-            receiver=s.smtp_receiver,
+            smtp_host=smtp_host,
+            smtp_port=int(smtp_port),
+            username=smtp_username,
+            password=smtp_password,
+            sender=smtp_sender,
+            receiver=smtp_receiver,
         )
     return NotificationService(slack_notifier=slack_notifier, email_notifier=email_notifier)
 
 notifier = _build_notifier()
+
+
+def _rebuild_notifier() -> None:
+    global notifier
+    notifier = _build_notifier()
 
 # In-memory generator state
 generator_state = {
@@ -386,6 +399,14 @@ class EmailConfigRequest(BaseModel):
     threshold: str = "critical"   # "critical" | "high"
 
 
+class SMTPConfigRequest(BaseModel):
+    host: str
+    port: int = 465
+    username: str
+    password: str
+    sender: str
+
+
 @router.get("/email-config")
 async def get_email_config():
     return runtime_config.email_config
@@ -400,4 +421,34 @@ async def update_email_config(config: EmailConfigRequest):
     runtime_config.email_config["receiver"] = config.receiver.strip()
     runtime_config.email_config["threshold"] = config.threshold
 
+    _rebuild_notifier()
+
     return {"status": "updated", "config": runtime_config.email_config}
+
+
+@router.get("/smtp-config")
+async def get_smtp_config():
+    s = get_settings()
+    return {
+        "host": runtime_config.smtp_config.get("host") or s.smtp_host,
+        "port": runtime_config.smtp_config.get("port") or s.smtp_port,
+        "username": runtime_config.smtp_config.get("username") or s.smtp_username,
+        "password": runtime_config.smtp_config.get("password") or s.smtp_password,
+        "sender": runtime_config.smtp_config.get("sender") or s.smtp_sender,
+    }
+
+
+@router.post("/smtp-config")
+async def update_smtp_config(config: SMTPConfigRequest):
+    if config.port < 1 or config.port > 65535:
+        raise HTTPException(status_code=422, detail="port must be between 1 and 65535")
+
+    runtime_config.smtp_config["host"] = config.host.strip()
+    runtime_config.smtp_config["port"] = config.port
+    runtime_config.smtp_config["username"] = config.username.strip()
+    runtime_config.smtp_config["password"] = config.password.strip()
+    runtime_config.smtp_config["sender"] = config.sender.strip()
+
+    _rebuild_notifier()
+
+    return {"status": "updated", "config": runtime_config.smtp_config}
