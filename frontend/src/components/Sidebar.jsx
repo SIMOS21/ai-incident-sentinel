@@ -55,7 +55,7 @@ const settingsItem = {
   ),
 };
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -68,10 +68,20 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-r border-slate-800/60 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:border-slate-800 light:from-white light:via-gray-50 light:to-white light:border-gray-200 flex flex-col shadow-2xl z-30">
+    <aside className={`fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-r border-slate-800/60 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:border-slate-800 light:from-white light:via-gray-50 light:to-white light:border-gray-200 flex flex-col shadow-2xl z-30 transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
 
       {/* ===== Header ===== */}
-      <div className="p-6 border-b border-slate-800/60 dark:border-slate-800 light:border-gray-200">
+      <div className="p-6 border-b border-slate-800/60 dark:border-slate-800 light:border-gray-200 relative">
+        {/* Close button — mobile only */}
+        <button
+          className="md:hidden absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all"
+          onClick={onClose}
+          aria-label="Close menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <div className="flex items-center space-x-2.5 mb-1">
           <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-cyan-500/20 flex-shrink-0">
             <svg className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,6 +202,6 @@ export default function Sidebar() {
           <span className="text-sm font-semibold">Sign Out</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

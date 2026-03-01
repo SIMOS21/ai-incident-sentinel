@@ -126,7 +126,7 @@ export default function Dashboard() {
 
       {/* ===== Sticky header ===== */}
       <div className="sticky top-0 z-10 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800/50">
-        <div className="px-8 py-5">
+        <div className="px-4 sm:px-8 py-5">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 bg-clip-text text-transparent">
@@ -155,7 +155,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-6">
         {/* Filters */}
         <FilterBar filters={filters} setFilters={setFilters} />
 
@@ -171,7 +171,7 @@ export default function Dashboard() {
         {/* Critical alert banner */}
         {stats.high > 0 && (
           <div className="bg-red-900/15 border-2 border-red-500/40 rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 text-red-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +207,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: "Last hour", value: lastHour, color: "text-cyan-400"   },
               { label: "Today",     value: last24h,  color: "text-blue-400"   },

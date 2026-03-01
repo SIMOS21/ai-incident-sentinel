@@ -119,7 +119,7 @@ export default function Incidents() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-8">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">

@@ -151,7 +151,7 @@ export default function Analytics() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-8">
 
       {/* ===== Header ===== */}
       <div className="flex items-start justify-between mb-8">
@@ -183,7 +183,7 @@ export default function Analytics() {
       </div>
 
       {/* ===== KPI Cards ===== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <KpiCard
           label="Total Incidents"
           value={totalIncidents}

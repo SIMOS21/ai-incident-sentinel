@@ -175,7 +175,7 @@ export default function Admin() {
   const severityStyle = SEVERITY_STYLES[severity] || SEVERITY_STYLES.low;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-8">
 
       {/* ===== Header ===== */}
       <div className="mb-8">
@@ -227,7 +227,7 @@ export default function Admin() {
             )}
 
             {/* Stats counter */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="bg-slate-800/40 rounded-xl p-5 text-center border border-slate-700/30">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Session (backend)</p>
                 <p className="text-4xl font-bold text-cyan-400">{stats.generated}</p>
@@ -269,7 +269,7 @@ export default function Admin() {
             </div>
 
             {/* Settings */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,7 +323,7 @@ export default function Admin() {
               <h2 className="text-xl font-bold text-slate-200">Quick Actions</h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Generate 10 */}
               <button
                 onClick={() => generateExact(10)}
